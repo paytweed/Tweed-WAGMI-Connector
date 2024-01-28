@@ -2,6 +2,12 @@
 
 Welcome to the Wagmi X Tweed example project! This repository showcases a simple implementation of using the Tweed SDK as a connector for Wagmi.
 
+## Supported Wagmi SDK Hooks
+
+useAccount, useBalance, useChainId, useClient, useConnect, useConfig, useDisconnect, useSendTransaction, useSwitchChain, useWriteContract
+
+Please note that hooks not listed here might still work seamlessly with this connector, but have not been tested yet.
+
 ## Project setup
 
 To get started, follow these straightforward steps:
