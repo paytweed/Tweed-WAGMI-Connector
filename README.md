@@ -95,11 +95,17 @@ export const getTweedConnector = async () => {
 
 ```javascript
 import { createConfig } from 'wagmi';
-import { getTweedConnector } from './tweedConnector';
+import { Network } from "@paytweed/core-js";
+import { mainnet, sepolia } from "wagmi/chains";
+import { TweedConnector } from "./tweedConnector";
+
+const appId = "YOUR-APP-ID";
+const chains = [Network.ETHEREUM, Network.ETHEREUM_SEPOLIA];
 
 export const config = createConfig({
   chains: [mainnet, sepolia],
-  connectors: [await getTweedConnector()],
+  connectors: [new TweedConnector(appId, chains).createConnector()],
+
   // ... other configuration
 });
   ```
