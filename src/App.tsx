@@ -1,19 +1,22 @@
 import { useAccount, useBalance, useChainId, useConnect, useDisconnect, useSendTransaction, useSwitchChain } from 'wagmi';
 
-
 function App() {
-  const account = useAccount()
-  const { connectors, connect, status: connectStatus, error: connectError } = useConnect()
-  const { disconnect } = useDisconnect()
-  const { chains, switchChain } = useSwitchChain()
-  const { sendTransaction } =useSendTransaction();
-  const chainId = useChainId()
+  const account = useAccount();
+  const {
+    connectors,
+    connect,
+    status: connectStatus,
+    error: connectError,
+  } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { chains, switchChain } = useSwitchChain();
+  const { sendTransaction } = useSendTransaction();
+  const chainId = useChainId();
 
-
-  const address = account.address
+  const address = account.address;
   const result = useBalance({
-    address
-  })
+    address,
+  });
 
   async function handleSendTransaction() {
     sendTransaction({
@@ -23,11 +26,10 @@ function App() {
     });
   }
 
-
-  const balance = result.data?.value
-  const decimals = result.data?.decimals
-  const balanceAsString = balance && decimals ? Number(balance) / 10 ** decimals : ''  
-
+  const balance = result.data?.value;
+  const decimals = result.data?.decimals;
+  const balanceAsString =
+    balance && decimals ? Number(balance) / 10 ** decimals : "";
 
   return (
     <>
@@ -43,7 +45,7 @@ function App() {
           <br />
           balance: {balanceAsString}
         </div>
-        {account.status === 'connected' && (
+        {account.status === "connected" && (
           <button type="button" onClick={() => disconnect()}>
             Disconnect
           </button>
@@ -62,34 +64,35 @@ function App() {
           </button>
         ))}
 
-{account.status === 'connected' &&
-  <>
-        <h2>Switch Network</h2>
+        {account.status === "connected" && (
+          <>
+            <h2>Switch Network</h2>
 
-      <div>
-        {chains.map((chain) => (
-          <button key={chain.id} onClick={() => switchChain({ chainId: chain.id })}>
-            {chain.name}
-          </button>
-        ))}
-      </div>
+            <div>
+              {chains.map((chain) => (
+                <button
+                  key={chain.id}
+                  onClick={() => switchChain({ chainId: chain.id })}
+                >
+                  {chain.name}
+                </button>
+              ))}
+            </div>
 
-      <div>
-      <h2>Send Transaction</h2>
+            <div>
+              <h2>Send Transaction</h2>
 
-      <button onClick={handleSendTransaction}>send transaction</button>
-      </div>
-      </>
-        }
+              <button onClick={handleSendTransaction}>send transaction</button>
+            </div>
+          </>
+        )}
 
-
-
-<h3>Status</h3>
+        <h3>Status</h3>
         <div>{connectStatus}</div>
         <div>{connectError?.message}</div>
       </div>
     </>
-  )
+  );
 }
 
 export default App
