@@ -2,37 +2,44 @@ import { Network, TweedClient } from "@paytweed/core-js";
 import { EthereumProvider } from "@paytweed/core-js/lib/Eip1193Provider";
 import { createConnector } from "@wagmi/core";
 
+type StorageItem = { "tweedSDK.connected": boolean };
+
 export class TweedConnector {
   private client: TweedClient | null = null;
   private provider: EthereumProvider | undefined;
+  private appId: string;
+  private chains: Network[];
   constructor(appId: string, chains: Network[]) {
-    this.initialize(appId, chains);
+    this.appId = appId;
+    this.chains = chains;
   }
 
   private async initialize(appId: string, chains: Network[]) {
     this.client = await TweedClient.create(appId, { chains });
+    return this.client;
   }
 
   private async ensureConnected() {
+    if (!this.client) await this.initialize(this.appId, this.chains);
     const isAuthorized = this.client?.isAuthenticated;
     if (!isAuthorized) await this.client?.connect();
   }
 
   private async initializeProvider(chainId: number) {
+    await this.ensureConnected();
     if (!this.provider) {
       this.provider = await this.client?.getEthereumProvider(chainId);
     }
   }
 
   createConnector() {
-    return createConnector<EthereumProvider>((config) => ({
+    return createConnector<EthereumProvider, any, StorageItem>((config) => ({
       id: "tweed",
       name: "Tweed",
       icon: "https://paytweed-assets.s3.amazonaws.com/logo-square-black.png",
       type: "injected",
 
       connect: async () => {
-        await this.ensureConnected();
         const defaultChainId = config.chains.at(0)?.id || 0;
         await this.initializeProvider(defaultChainId);
 
@@ -47,12 +54,14 @@ export class TweedConnector {
         const normalizedChainId = this.normalizeChainId(chainId);
 
         config.emitter.emit("change", { chainId: normalizedChainId, accounts });
+        await config.storage?.setItem("tweedSDK.connected", true);
 
         return { chainId: normalizedChainId, accounts };
       },
 
       disconnect: async () => {
         this.client?.logout();
+        await config.storage?.removeItem("tweedSDK.connected");
       },
 
       getAccounts: async () => {
@@ -84,19 +93,28 @@ export class TweedConnector {
       getProvider: async (
         params: { chainId?: number | undefined } | undefined
       ): Promise<EthereumProvider> => {
+        const isconnected = await config.storage?.getItem("tweedSDK.connected");
+        if (!isconnected) {
+          console.warn(
+            "Cannot get provider, User is disconnected, please connect using useConnect hook first."
+          );
+          return this.provider as EthereumProvider;
+        }
+
+        const initialChainId = params?.chainId || config.chains.at(0)?.id || 0;
         if (!this.provider) {
-          await this.client?.connect();
-          if (!params?.chainId) throw new Error("chainId is required");
+          await this.ensureConnected();
+          if (!initialChainId) throw new Error("chainId is required");
           this.provider = await this.client?.getEthereumProvider(
-            params?.chainId
+            initialChainId
           );
         }
         if (!this.provider) throw new Error("Provider not found");
         return this.provider;
       },
 
-      switchChain: async ({ chainId }) => {
-        const chain = config.chains.find((x) => x.id === chainId);
+      switchChain: async ({ chainId }: { chainId: number }) => {
+        const chain = config.chains.find((chain) => chain.id === chainId);
         if (!chain) throw new Error(`Chain ${chainId} not found`);
 
         this.provider = await this.client?.getEthereumProvider(chainId);
@@ -112,16 +130,18 @@ export class TweedConnector {
       },
 
       isAuthorized: async () => {
-        if (!this.client) return false;
-        const isAuthorized = this.client?.isAuthenticated;
-        return isAuthorized;
+        const isconnected = await config.storage?.getItem("tweedSDK.connected");
+
+        if (isconnected) return true;
+
+        return false;
       },
 
       onAccountsChanged: async (accounts: any) => {
         config.emitter.emit("change", { accounts });
       },
 
-      onChainChanged: async (chain) => {
+      onChainChanged: async (chain: any) => {
         const chainId = this.normalizeChainId(chain);
         config.emitter.emit("change", { chainId });
       },
